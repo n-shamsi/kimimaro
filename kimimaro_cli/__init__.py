@@ -48,7 +48,7 @@ def main():
 @click.option('--scale', type=float, default=4, help="Adds multiple of boundary distance to invalidation zone. (You should set this!)", show_default=True)
 @click.option('--const', type=float, default=10, help="Adds constant physical distance to invalidation zone. (You should set this!)", show_default=True)
 @click.option('--pdrf-scale', type=int, default=1e5, help="Constant multiplier of penalty field.", show_default=True)
-@click.option('--pdrf-exponent', type=int, default=4, help="Exponent of penalty field. Powers of two are faster. Too big can cause floating point errors.", show_default=True)
+@click.option('--pdrf-exponent', type=int, default=8, help="Exponent of penalty field. Powers of two are faster. Too big can cause floating point errors.", show_default=True)
 @click.option('--soma-detect', type=float, default=750, help="Perform more expensive check for somas for distance to boundary values above this threshold. e.g. 750 nm", show_default=True)
 @click.option('--soma-accept', type=float, default=1100, help="Distance to boundary values above this threshold trigger special soma processing. e.g. 750 nm", show_default=True)
 @click.option('--soma-scale', type=float, default=2, help="Adds multiple of boundary distance to invalidation zone around a soma. (You should set this!)", show_default=True)
@@ -155,11 +155,15 @@ def to_image(src, format):
     ymin, ymax = fastremap.minmax(skel.vertices[:,1])
     zmin, zmax = fastremap.minmax(skel.vertices[:,2])
 
-    image = np.zeros((xmax-xmin, ymax-ymin, zmax-zmin), dtype=np.bool, order='F')
-    minpt = np.array([xmin,ymin,zmin])
+    image = np.zeros((int(zmax-zmin), int(ymax-ymin), int(xmax-xmin)), dtype=bool, order='F')
+    
+    minpt = np.array([int(xmin),int(ymin),int(zmin)])
     drawpts = skel.vertices - minpt
-
-    image[drawpts] = True
+    drawpts = np.asfortranarray(drawpts, dtype=np.int32)
+    
+    image[np.where((drawpts[:, 0] >= xmin) & (drawpts[:, 0] < xmax) & 
+                   (drawpts[:, 1] >= ymin) & (drawpts[:, 1] < ymax) & 
+                   (drawpts[:, 2] >= zmin) & (drawpts[:, 2] < zmax))] = True
 
     basename, ext = os.path.splitext(srcpath)
 
@@ -168,7 +172,11 @@ def to_image(src, format):
     elif format == "tiff":
       try:
         import tifffile
-        tifffile.imwrite(f"{basename}.tiff", image, photometric='minisblack')
+        tifffile.imwrite(f"{basename}.tiff", 
+                         image.astype(np.float32, copy=False), 
+                         photometric='minisblack',
+                         metadata={'axes': 'ZYX'},
+                         imagej=True)
       except ImportError:
         print("kimimaro: tifffile not installed. Run pip install tifffile.")
         return

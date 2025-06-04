@@ -46,7 +46,11 @@ import kimimaro.skeletontricks
 
 ## Public API of Module
 
-def postprocess(skeleton, dust_threshold=1500, tick_threshold=3000):
+def postprocess(
+  skeleton:Skeleton, 
+  dust_threshold:float = 1500.0, 
+  tick_threshold:float = 3000.0,
+) -> Skeleton:
   """
   Postprocessing of a skeleton enables aggregation of adjacent
   or overlapping skeletonized image chunks to be fused into a
@@ -77,7 +81,7 @@ def postprocess(skeleton, dust_threshold=1500, tick_threshold=3000):
 
   skeleton = remove_dust(skeleton, dust_threshold) 
   skeleton = remove_loops(skeleton)
-  skeleton = join_close_components(skeleton, restrict_using_radius=True)
+  skeleton = join_close_components(skeleton, restrict_by_radius=True)
   skeleton = remove_ticks(skeleton, tick_threshold)
   skeleton.id = label
   return skeleton.consolidate()
@@ -129,6 +133,7 @@ def join_close_components(
 
   if restrict_by_radius:
     radius = 2 * np.max([ np.max(s.radii) for s in skels ])
+    radius = max(radius, 0)
 
   def compute_nearest(tree, i, j):
     s1, s2 = skels[i], skels[j]

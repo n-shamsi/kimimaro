@@ -51,7 +51,18 @@ def test_square(fill_holes):
   labels[-1,0] = 0
   labels[0,-1] = 0
   
-  skels = kimimaro.skeletonize(labels, fix_borders=False, fill_holes=fill_holes)
+  teasar_params = {
+    "scale": 1.5, 
+    "const": 300,
+    "pdrf_scale": 100000,
+    "pdrf_exponent": 4,
+    "soma_acceptance_threshold": 3500,
+    "soma_detection_threshold": 750,
+    "soma_invalidation_const": 300,
+    "soma_invalidation_scale": 2
+  }
+
+  skels = kimimaro.skeletonize(labels, teasar_params=teasar_params, fix_borders=False, fill_holes=fill_holes)
 
   assert len(skels) == 1
 
@@ -64,7 +75,7 @@ def test_square(fill_holes):
   labels[0,0] = 0
   labels[-1,-1] = 0
 
-  skels = kimimaro.skeletonize(labels, fix_borders=False, fill_holes=fill_holes)
+  skels = kimimaro.skeletonize(labels, teasar_params=teasar_params, fix_borders=False, fill_holes=fill_holes)
 
   assert len(skels) == 1
 
@@ -591,5 +602,27 @@ def test_cross_sectional_area():
   except AssertionError:
     pass
   
+def test_postprocess():
+  skel = Skeleton([ 
+      (0,0,0), (1,0,0),    (4,0,0), (6,0,0),        (20,0,0), (21, 0, 0),
+      
+
+      (0,0,5), 
+      (0,0,10),
+    ], 
+    edges=[ (0,1), (2,3), (4,5), (6,7), (0,7), (1,6) ],
+  )
+
+  res_skel = kimimaro.post.postprocess(skel, dust_threshold=0, tick_threshold=0)
+
+  ans = Skeleton([ 
+      (4,0,0), (6,0,0),        (20,0,0), (21, 0, 0),
+    ], 
+    edges=[ (0,1), (2,3) ],
+  )
+
+  assert Skeleton.equivalent(res_skel, ans)
+
+
 
 
